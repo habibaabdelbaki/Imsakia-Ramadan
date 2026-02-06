@@ -1,0 +1,1999 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقويم رمضان</title>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="/_sdk/data_sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&amp;display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/dist/output.css">
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+
+        /* إخفاء شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+        }
+
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .pulse-anim {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+        }
+
+        .day-card {
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+
+        .day-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .minimal-pattern {
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        .clock-digit {
+            transition: all 0.3s ease;
+        }
+
+        .hadith-card {
+            transition: all 0.5s ease;
+        }
+    </style>
+    <style>
+        @view-transition {
+            navigation: auto;
+        }
+    </style>
+</head>
+
+<body class="h-full">
+    <div id="app" class="min-h-full w-full overflow-auto"></div>
+    <script>
+        const defaultConfig = {
+            main_title: "رمضان كريم",
+            subtitle: "١٤٤٦ هـ",
+            countdown_title: "العد التنازلي",
+            prayer_times_title: "مواقيت الصلاة",
+            azkar_title: "الأذكار",
+            quran_title: "القرآن الكريم",
+            tasks_title: "المهام",
+            duaa_title: "الأدعية",
+            brand_name: "الرصد",
+            whatsapp_number: "+201234567890",
+            phone_number: "+201234567890",
+            background_color: "#0a0f1e",
+            surface_color: "#1a2332",
+            text_color: "#e8edf4",
+            primary_action_color: "#d4af37",
+            secondary_action_color: "#8b7355",
+            font_family: "Tajawal",
+            font_size: 16,
+            dark_mode: true
+        };
+
+        let config = {};
+        let tasks = [];
+        let currentPage = 'home';
+        let currentRamadanDay = 1;
+        let ramadanStartDate = new Date('2026-02-18');
+        let prayerTimes = {
+            Fajr: "04:30",
+            Sunrise: "06:00",
+            Dhuhr: "12:00",
+            Asr: "15:15",
+            Maghrib: "18:00",
+            Isha: "19:30"
+        };
+        let userLocation = { city: 'القاهرة', country: 'EG' };
+        let nextPrayer = { name: '', timeLeft: '', arabicName: '' };
+        let currentHijriDate = { day: '', month: '', year: '' };
+        let currentGregorianDate = { day: '', month: '', year: '', weekday: '' };
+        let currentTime = { hours: 0, minutes: 0, seconds: 0 };
+        let currentHadithIndex = 0;
+        let currentAzkarTab = 'morning';
+        let currentQuranMode = 'listen';
+        let currentReciter = 'ar.alafasy';
+        let tasbihCount = 0;
+        let tasbihTarget = 33;
+        let selectedZikr = 'سبحان الله';
+
+        let azkarData = {
+            morning: [],
+            evening: [],
+            sleep: [],
+            general: [],
+            duaa: []
+        };
+        let azkarLoading = true;
+        let hadithData = [];
+        let hadithLoading = true;
+        let quranSurahsData = [];
+        let quranLoading = true;
+
+        const prayerNames = {
+            Fajr: 'الفجر',
+            Sunrise: 'الشروق',
+            Dhuhr: 'الظهر',
+            Asr: 'العصر',
+            Maghrib: 'المغرب',
+            Isha: 'العشاء'
+        };
+
+        const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        const arabicDays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const hijriMonths = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
+
+        async function fetchAzkar() {
+            try {
+                azkarLoading = true;
+
+                // أذكار الصباح والمساء والنوم من API
+                const response = await fetch('https://api.hadith.gading.dev/books/muslim?range=1-50');
+                const data = await response.json();
+
+                if (data.data && data.data.hadiths) {
+                    const hadiths = data.data.hadiths;
+
+                    azkarData.morning = hadiths.slice(0, 8).map(h => ({
+                        text: h.arab,
+                        count: 1
+                    }));
+
+                    azkarData.evening = hadiths.slice(8, 15).map(h => ({
+                        text: h.arab,
+                        count: 1
+                    }));
+
+                    azkarData.sleep = hadiths.slice(15, 20).map(h => ({
+                        text: h.arab,
+                        count: 1
+                    }));
+
+                    azkarData.duaa = hadiths.slice(20, 40).map(h => ({
+                        text: h.arab,
+                        category: 'دعاء'
+                    }));
+                }
+
+                // أذكار عامة (ثابتة)
+                azkarData.general = [
+                    { text: "سُبْحَانَ اللَّهِ", count: 33 },
+                    { text: "الْحَمْدُ لِلَّهِ", count: 33 },
+                    { text: "اللَّهُ أَكْبَرُ", count: 34 },
+                    { text: "لَا إِلَهَ إِلَّا اللَّهُ", count: 100 },
+                    { text: "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ", count: 100 },
+                    { text: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", count: 100 },
+                    { text: "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ", count: 100 }
+                ];
+
+                azkarLoading = false;
+            } catch (error) {
+                console.error('خطأ في جلب الأذكار:', error);
+                azkarData = {
+                    morning: [
+                        { text: "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ", count: 1 },
+                        { text: "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ", count: 1 },
+                        { text: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", count: 100 }
+                    ],
+                    evening: [
+                        { text: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ", count: 1 },
+                        { text: "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ", count: 1 }
+                    ],
+                    sleep: [
+                        { text: "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا", count: 1 },
+                        { text: "اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ", count: 3 }
+                    ],
+                    general: [
+                        { text: "سُبْحَانَ اللَّهِ", count: 33 },
+                        { text: "الْحَمْدُ لِلَّهِ", count: 33 },
+                        { text: "اللَّهُ أَكْبَرُ", count: 34 }
+                    ],
+                    duaa: [
+                        { text: "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ", category: 'دعاء' },
+                        { text: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى", category: 'دعاء' }
+                    ]
+                };
+                azkarLoading = false;
+            }
+        }
+
+        async function fetchHadith() {
+            try {
+                hadithLoading = true;
+                const response = await fetch('https://api.hadith.gading.dev/books/bukhari?range=1-30');
+                const data = await response.json();
+
+                if (data.data && data.data.hadiths) {
+                    hadithData = data.data.hadiths.map(h => ({
+                        text: h.arab,
+                        source: 'صحيح البخاري - حديث رقم ' + h.number
+                    }));
+                }
+                hadithLoading = false;
+            } catch (error) {
+                console.error('خطأ في جلب الأحاديث:', error);
+                hadithData = [
+                    { text: "مَنْ صَامَ رَمَضَانَ إِيمَانًا وَاحْتِسَابًا غُفِرَ لَهُ مَا تَقَدَّمَ مِنْ ذَنْبِهِ", source: "متفق عليه" },
+                    { text: "إِذَا دَخَلَ رَمَضَانُ فُتِّحَتْ أَبْوَابُ الْجَنَّةِ، وَغُلِّقَتْ أَبْوَابُ جَهَنَّمَ، وَسُلْسِلَتِ الشَّيَاطِينُ", source: "متفق عليه" },
+                    { text: "مَنْ قَامَ رَمَضَانَ إِيمَانًا وَاحْتِسَابًا غُفِرَ لَهُ مَا تَقَدَّمَ مِنْ ذَنْبِهِ", source: "متفق عليه" }
+                ];
+                hadithLoading = false;
+            }
+        }
+
+        async function fetchQuranSurahs() {
+            try {
+                quranLoading = true;
+                const response = await fetch('https://api.alquran.cloud/v1/surah');
+                const data = await response.json();
+
+                if (data.data) {
+                    quranSurahsData = data.data.map(s => ({
+                        num: s.number,
+                        name: s.name,
+                        englishName: s.englishName,
+                        verses: s.numberOfAyahs,
+                        type: s.revelationType === 'Meccan' ? 'مكية' : 'مدنية'
+                    }));
+                }
+                quranLoading = false;
+            } catch (error) {
+                console.error('خطأ في جلب سور القرآن:', error);
+                quranSurahsData = [
+                    { num: 1, name: "الفاتحة", verses: 7, type: 'مكية' },
+                    { num: 2, name: "البقرة", verses: 286, type: 'مدنية' },
+                    { num: 3, name: "آل عمران", verses: 200, type: 'مدنية' },
+                    { num: 18, name: "الكهف", verses: 110, type: 'مكية' },
+                    { num: 36, name: "يس", verses: 83, type: 'مكية' }
+                ];
+                quranLoading = false;
+            }
+        }
+
+        function getThemeColors() {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            if (isDark) {
+                return {
+                    background: config.background_color || defaultConfig.background_color,
+                    surface: config.surface_color || defaultConfig.surface_color,
+                    text: config.text_color || defaultConfig.text_color,
+                    primary: config.primary_action_color || defaultConfig.primary_action_color,
+                    secondary: config.secondary_action_color || defaultConfig.secondary_action_color
+                };
+            } else {
+                return {
+                    background: '#f8f9fa',
+                    surface: '#ffffff',
+                    text: '#1a1a1a',
+                    primary: config.primary_action_color || defaultConfig.primary_action_color,
+                    secondary: config.secondary_action_color || defaultConfig.secondary_action_color
+                };
+            }
+        }
+
+        async function fetchPrayerTimes() {
+            try {
+                const today = new Date();
+                const timestamp = Math.floor(today.getTime() / 1000);
+                const response = await fetch(`https://api.aladhan.com/v1/timings/${timestamp}?latitude=30.0444&longitude=31.2357&method=5`);
+                const data = await response.json();
+
+                if (data.code === 200) {
+                    const timings = data.data.timings;
+                    prayerTimes = {
+                        Fajr: timings.Fajr.substring(0, 5),
+                        Sunrise: timings.Sunrise.substring(0, 5),
+                        Dhuhr: timings.Dhuhr.substring(0, 5),
+                        Asr: timings.Asr.substring(0, 5),
+                        Maghrib: timings.Maghrib.substring(0, 5),
+                        Isha: timings.Isha.substring(0, 5)
+                    };
+
+                    const hijri = data.data.date.hijri;
+                    currentHijriDate = {
+                        day: hijri.day,
+                        month: hijri.month.ar,
+                        year: hijri.year
+                    };
+
+                    const gregorian = data.data.date.gregorian;
+                    currentGregorianDate = {
+                        day: gregorian.day,
+                        month: arabicMonths[parseInt(gregorian.month.number) - 1],
+                        year: gregorian.year,
+                        weekday: gregorian.weekday.ar
+                    };
+
+                    if (hijri.month.number === '9' || hijri.month.number === 9) {
+                        currentRamadanDay = parseInt(hijri.day);
+                    }
+
+                    calculateNextPrayer();
+                    updatePrayerTimesDisplay();
+                }
+            } catch (error) {
+                console.error('خطأ في جلب المواقيت:', error);
+            }
+        }
+
+        function updatePrayerTimesDisplay() {
+            const fajrEl = document.getElementById('prayer-time-fajr');
+            const sunriseEl = document.getElementById('prayer-time-sunrise');
+            const dhuhrEl = document.getElementById('prayer-time-dhuhr');
+            const asrEl = document.getElementById('prayer-time-asr');
+            const maghribEl = document.getElementById('prayer-time-maghrib');
+            const ishaEl = document.getElementById('prayer-time-isha');
+
+            if (fajrEl) fajrEl.textContent = prayerTimes.Fajr;
+            if (sunriseEl) sunriseEl.textContent = prayerTimes.Sunrise;
+            if (dhuhrEl) dhuhrEl.textContent = prayerTimes.Dhuhr;
+            if (asrEl) asrEl.textContent = prayerTimes.Asr;
+            if (maghribEl) maghribEl.textContent = prayerTimes.Maghrib;
+            if (ishaEl) ishaEl.textContent = prayerTimes.Isha;
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            currentTime = {
+                hours: now.getHours(),
+                minutes: now.getMinutes(),
+                seconds: now.getSeconds()
+            };
+
+            const hoursEl = document.getElementById('live-hours');
+            const minutesEl = document.getElementById('live-minutes');
+            const secondsEl = document.getElementById('live-seconds');
+
+            if (hoursEl) hoursEl.textContent = String(currentTime.hours).padStart(2, '0');
+            if (minutesEl) minutesEl.textContent = String(currentTime.minutes).padStart(2, '0');
+            if (secondsEl) secondsEl.textContent = String(currentTime.seconds).padStart(2, '0');
+        }
+
+        function calculateNextPrayer() {
+            const now = new Date();
+            const currentTime = now.getHours() * 60 + now.getMinutes();
+
+            const prayerOrder = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+            for (let i = 0; i < prayerOrder.length; i++) {
+                const prayerName = prayerOrder[i];
+                const [hours, minutes] = prayerTimes[prayerName].split(':').map(Number);
+                const prayerTimeInMinutes = hours * 60 + minutes;
+
+                if (currentTime < prayerTimeInMinutes) {
+                    const diff = prayerTimeInMinutes - currentTime;
+                    const hoursLeft = Math.floor(diff / 60);
+                    const minutesLeft = diff % 60;
+
+                    nextPrayer = {
+                        name: prayerName,
+                        arabicName: prayerNames[prayerName],
+                        timeLeft: hoursLeft > 0 ? `${hoursLeft} ساعة و ${minutesLeft} دقيقة` : `${minutesLeft} دقيقة`
+                    };
+                    return;
+                }
+            }
+
+            const [hours, minutes] = prayerTimes['Fajr'].split(':').map(Number);
+            const fajrTime = hours * 60 + minutes;
+            const diff = (24 * 60) - currentTime + fajrTime;
+            const hoursLeft = Math.floor(diff / 60);
+            const minutesLeft = diff % 60;
+
+            nextPrayer = {
+                name: 'Fajr',
+                arabicName: prayerNames['Fajr'],
+                timeLeft: hoursLeft > 0 ? `${hoursLeft} ساعة و ${minutesLeft} دقيقة` : `${minutesLeft} دقيقة`
+            };
+        }
+
+        function getCrescentSVG(color) {
+            return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%;">
+                <path d="M 50 10 Q 70 30, 70 50 Q 70 70, 50 90 Q 60 75, 60 50 Q 60 25, 50 10 Z" 
+                      fill="${color}" opacity="0.9"/>
+                <circle cx="65" cy="25" r="6" fill="${color}" opacity="0.8"/>
+            </svg>`;
+        }
+
+        function calculateRamadanCountdown() {
+            const now = new Date();
+            const diff = ramadanStartDate - now;
+
+            if (diff <= 0) {
+                return { days: 0, hours: 0, minutes: 0, seconds: 0, started: true };
+            }
+
+            return {
+                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+                seconds: Math.floor((diff % (1000 * 60)) / 1000),
+                started: false
+            };
+        }
+
+        function toggleDarkMode() {
+            config.dark_mode = !config.dark_mode;
+            window.elementSdk.setConfig({ dark_mode: config.dark_mode });
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Tajawal, Arial, sans-serif';
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const colors = getThemeColors();
+
+            if (currentPage === 'home') {
+                renderHomePage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'calendar') {
+                renderCalendarPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'azkar') {
+                renderAzkarPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'quran') {
+                renderQuranPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'tasbih') {
+                renderTasbihPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'tasks') {
+                renderTasksPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'hadith') {
+                renderHadithPage(app, customFont, baseFontStack, baseSize, colors);
+            } else if (currentPage === 'duaa') {
+                renderDuaaPage(app, customFont, baseFontStack, baseSize, colors);
+            }
+
+            attachEventListeners();
+            if (currentPage === 'home') {
+                startCountdownUpdate();
+                startTimeUpdate();
+            }
+        }
+
+        function renderHomePage(app, customFont, baseFontStack, baseSize, colors) {
+            const countdown = calculateRamadanCountdown();
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <!-- HERO HEADER -->
+                    <header class="w-full minimal-pattern relative" style="background: linear-gradient(165deg, ${colors.surface} 0%, ${colors.background} 100%); padding: 80px 24px 100px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-5xl mx-auto">
+                            <!-- Theme Toggle -->
+                            <div class="flex justify-end mb-6">
+                                <button onclick="toggleDarkMode()" class="card-hover flex items-center gap-3 px-5 py-2.5 rounded-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};">
+                                    <svg class="w-5 h-5" style="fill: ${colors.text}; opacity: 0.7;" viewBox="0 0 24 24">
+                                        ${isDark ?
+                    '<path d="M12,18C11.11,18 10.26,17.8 9.5,17.45C11.56,16.5 13,14.42 13,12C13,9.58 11.56,7.5 9.5,6.55C10.26,6.2 11.11,6 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z"/>' :
+                    '<path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.82,19 13.63,18.83 14.37,18.56L12,22Z"/>'}
+                                    </svg>
+                                    <span style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; font-weight: 500; opacity: 0.8;">
+                                        ${isDark ? 'فاتح' : 'داكن'}
+                                    </span>
+                                </button>
+                            </div>
+                            
+                            <div class="text-center fade-in">
+                                <div class="mb-8">
+                                    <div class="inline-block w-20 h-20 mb-6 float" style="opacity: 0.85;">
+                                        ${getCrescentSVG(colors.primary)}
+                                    </div>
+                                </div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 3.5}px; font-weight: 700; margin-bottom: 20px; letter-spacing: 1px; line-height: 1.3;">
+                                    ${config.main_title || defaultConfig.main_title}
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 1.4}px; font-weight: 400; opacity: 0.6; letter-spacing: 0.5px; margin-bottom: 32px;">
+                                    ${config.subtitle || defaultConfig.subtitle}
+                                </p>
+                                
+                                <!-- الساعة المباشرة -->
+                                <div class="flex justify-center items-center gap-3 mb-8">
+                                    <div class="flex items-center gap-2" style="background: ${colors.surface}; padding: 16px 28px; border-radius: 16px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                        <span id="live-hours" class="clock-digit" style="color: ${colors.primary}; font-size: ${baseSize * 2.5}px; font-weight: 300; min-width: 60px; text-align: center;">
+                                            ${String(currentTime.hours).padStart(2, '0')}
+                                        </span>
+                                        <span class="pulse-anim" style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 200; opacity: 0.5;">:</span>
+                                        <span id="live-minutes" class="clock-digit" style="color: ${colors.primary}; font-size: ${baseSize * 2.5}px; font-weight: 300; min-width: 60px; text-align: center;">
+                                            ${String(currentTime.minutes).padStart(2, '0')}
+                                        </span>
+                                        <span class="pulse-anim" style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 200; opacity: 0.5;">:</span>
+                                        <span id="live-seconds" class="clock-digit" style="color: ${colors.text}; font-size: ${baseSize * 2.5}px; font-weight: 300; opacity: 0.5; min-width: 60px; text-align: center;">
+                                            ${String(currentTime.seconds).padStart(2, '0')}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- التاريخ والموقع -->
+                                <div class="flex flex-wrap justify-center gap-8 mt-8">
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5" style="fill: ${colors.primary}; opacity: 0.7;" viewBox="0 0 24 24">
+                                            <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+                                        </svg>
+                                        <span style="color: ${colors.text}; font-size: ${baseSize * 1}px; opacity: 0.7;">
+                                            ${currentGregorianDate.weekday} ${currentGregorianDate.day} ${currentGregorianDate.month} ${currentGregorianDate.year}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <svg class="w-5 h-5" style="fill: ${colors.primary}; opacity: 0.7;" viewBox="0 0 24 24">
+                                            <path d="M9,10A1,1 0 0,1 8,9A1,1 0 0,1 9,8A1,1 0 0,1 10,9A1,1 0 0,1 9,10M9,4A1,1 0 0,1 8,3A1,1 0 0,1 9,2H15A1,1 0 0,1 16,3A1,1 0 0,1 15,4H9M9,18A1,1 0 0,1 8,17A1,1 0 0,1 9,16A1,1 0 0,1 10,17A1,1 0 0,1 9,18M15,8A1,1 0 0,1 14,7A1,1 0 0,1 15,6A1,1 0 0,1 16,7A1,1 0 0,1 15,8M15,14A1,1 0 0,1 14,13A1,1 0 0,1 15,12A1,1 0 0,1 16,13A1,1 0 0,1 15,14M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
+                                        </svg>
+                                        <span style="color: ${colors.text}; font-size: ${baseSize * 1}px; opacity: 0.7;">
+                                            ${currentHijriDate.day} ${currentHijriDate.month} ${currentHijriDate.year} هـ
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-16 max-w-6xl mx-auto">
+                        
+                        <!-- RAMADAN COUNTDOWN -->
+                        ${!countdown.started ? `
+                        <section class="mb-20 fade-in">
+                            <div class="rounded-lg p-12 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 1}px; font-weight: 500; margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8;">
+                                    ${config.countdown_title || defaultConfig.countdown_title}
+                                </p>
+                                <div class="flex justify-center gap-8 flex-wrap">
+                                    <div class="text-center">
+                                        <p id="countdown-days" style="color: ${colors.text}; font-size: ${baseSize * 4}px; font-weight: 300; line-height: 1; margin-bottom: 12px;">
+                                            ${String(countdown.days).padStart(2, '0')}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; font-weight: 400;">يوم</p>
+                                    </div>
+                                    <span style="color: ${colors.text}; font-size: ${baseSize * 3}px; font-weight: 200; align-self: center; opacity: 0.3;">:</span>
+                                    <div class="text-center">
+                                        <p id="countdown-hours" style="color: ${colors.text}; font-size: ${baseSize * 4}px; font-weight: 300; line-height: 1; margin-bottom: 12px;">
+                                            ${String(countdown.hours).padStart(2, '0')}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; font-weight: 400;">ساعة</p>
+                                    </div>
+                                    <span style="color: ${colors.text}; font-size: ${baseSize * 3}px; font-weight: 200; align-self: center; opacity: 0.3;">:</span>
+                                    <div class="text-center">
+                                        <p id="countdown-minutes" style="color: ${colors.text}; font-size: ${baseSize * 4}px; font-weight: 300; line-height: 1; margin-bottom: 12px;">
+                                            ${String(countdown.minutes).padStart(2, '0')}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; font-weight: 400;">دقيقة</p>
+                                    </div>
+                                    <span style="color: ${colors.text}; font-size: ${baseSize * 3}px; font-weight: 200; align-self: center; opacity: 0.3;">:</span>
+                                    <div class="text-center">
+                                        <p id="countdown-seconds" style="color: ${colors.text}; font-size: ${baseSize * 4}px; font-weight: 300; line-height: 1; margin-bottom: 12px;">
+                                            ${String(countdown.seconds).padStart(2, '0')}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; font-weight: 400;">ثانية</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        ` : ''}
+
+                        <!-- NEXT PRAYER -->
+                        ${nextPrayer.arabicName ? `
+                        <section class="mb-16 fade-in" style="animation-delay: 0.15s;">
+                            <div class="rounded-lg p-8 text-center shimmer" style="background: linear-gradient(135deg, ${colors.primary}20 0%, ${colors.primary}05 100%); border: 1px solid ${colors.primary}30;">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; font-weight: 500; margin-bottom: 16px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">
+                                    الصلاة القادمة
+                                </p>
+                                <h3 style="color: ${colors.primary}; font-size: ${baseSize * 2.5}px; font-weight: 600; margin-bottom: 10px;">
+                                    ${nextPrayer.arabicName}
+                                </h3>
+                                <p id="next-prayer-time" style="color: ${colors.text}; font-size: ${baseSize * 1.2}px; opacity: 0.7; font-weight: 400;">
+                                    بعد ${nextPrayer.timeLeft}
+                                </p>
+                            </div>
+                        </section>
+                        ` : ''}
+
+                        <!-- PRAYER TIMES -->
+                        <section class="mb-20 fade-in" style="animation-delay: 0.2s;">
+                            <h2 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 24px;">
+                                ${config.prayer_times_title || defaultConfig.prayer_times_title}
+                            </h2>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                ${Object.entries(prayerNames).map(([key, name]) => {
+                        const isNext = key === nextPrayer.name;
+                        return `
+                                    <div class="card-hover rounded-md p-6 text-center" style="background: ${isNext ? colors.primary + '15' : colors.surface}; border: 1px solid ${isNext ? colors.primary + '50' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')};">
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 1}px; font-weight: 500; margin-bottom: 12px; opacity: 0.6;">
+                                            ${name}
+                                        </p>
+                                        <p id="prayer-time-${key.toLowerCase()}" style="color: ${isNext ? colors.primary : colors.text}; font-size: ${baseSize * 1.6}px; font-weight: ${isNext ? '600' : '300'}; letter-spacing: 1px;">
+                                            ${prayerTimes[key]}
+                                        </p>
+                                    </div>
+                                `;
+                    }).join('')}
+                            </div>
+                        </section>
+
+                        <!-- HADITH OF THE DAY -->
+                        <section class="mb-20 fade-in" style="animation-delay: 0.25s;">
+                            <div class="rounded-lg p-10 hadith-card" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; border-right: 4px solid ${colors.primary};">
+                                ${hadithLoading ? `
+                                    <div class="flex justify-center items-center py-10">
+                                        <div class="spinner" style="width: 40px; height: 40px; border: 3px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                                    </div>
+                                ` : `
+                                    <div class="flex items-start justify-between mb-6">
+                                        <h3 style="color: ${colors.primary}; font-size: ${baseSize * 1.3}px; font-weight: 600;">
+                                            حديث اليوم
+                                        </h3>
+                                        <div class="flex gap-2">
+                                            <button onclick="previousHadith()" class="card-hover px-3 py-2 rounded border-none cursor-pointer" style="background: ${colors.background}; color: ${colors.text}; opacity: 0.7;">
+                                                ‹
+                                            </button>
+                                            <button onclick="nextHadith()" class="card-hover px-3 py-2 rounded border-none cursor-pointer" style="background: ${colors.background}; color: ${colors.text}; opacity: 0.7;">
+                                                ›
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p id="hadith-text" style="color: ${colors.text}; font-size: ${baseSize * 1.2}px; line-height: 2.2; margin-bottom: 20px; font-weight: 400;">
+                                        ${hadithData[currentHadithIndex]?.text || ''}
+                                    </p>
+                                    <p id="hadith-source" style="color: ${colors.primary}; font-size: ${baseSize * 0.95}px; opacity: 0.7; font-weight: 500;">
+                                        ${hadithData[currentHadithIndex]?.source || ''}
+                                    </p>
+                                `}
+                            </div>
+                            <div class="text-center mt-6">
+                                <button onclick="navigateTo('hadith')" class="card-hover px-6 py-3 rounded-md border-none cursor-pointer" style="background: ${colors.primary}15; color: ${colors.primary}; font-size: ${baseSize * 0.95}px; font-weight: 500; border: 1px solid ${colors.primary}40;">
+                                    عرض جميع الأحاديث
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- NAVIGATION GRID -->
+                        <section class="mb-20 fade-in" style="animation-delay: 0.3s;">
+                            <div class="grid md:grid-cols-4 gap-6">
+                                <button onclick="navigateTo('calendar')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">📅</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        التقويم
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        تقويم رمضان الكامل
+                                    </p>
+                                </button>
+
+                                <button onclick="navigateTo('azkar')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">🤲</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        ${config.azkar_title || defaultConfig.azkar_title}
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        أذكار الصباح والمساء
+                                    </p>
+                                </button>
+
+                                <button onclick="navigateTo('quran')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">📖</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        ${config.quran_title || defaultConfig.quran_title}
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        قراءة واستماع
+                                    </p>
+                                </button>
+
+                                <button onclick="navigateTo('tasbih')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">📿</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        المسبحة
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        عداد الأذكار
+                                    </p>
+                                </button>
+
+                                <button onclick="navigateTo('duaa')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">🤲</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        ${config.duaa_title || defaultConfig.duaa_title}
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        أدعية مختارة
+                                    </p>
+                                </button>
+
+                                <button onclick="navigateTo('tasks')" class="card-hover rounded-md p-10 text-center w-full border-none cursor-pointer" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                    <div class="text-4xl mb-4">✅</div>
+                                    <h3 style="color: ${colors.text}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 10px;">
+                                        ${config.tasks_title || defaultConfig.tasks_title}
+                                    </h3>
+                                    <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                        نظّم مهامك الرمضانية
+                                    </p>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- CONTACT SECTION -->
+                        <section class="fade-in" style="animation-delay: 0.4s;">
+                            <div class="rounded-md p-12 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <h2 style="color: ${colors.text}; font-size: ${baseSize * 1.8}px; font-weight: 600; margin-bottom: 16px;">
+                                    ${config.brand_name || defaultConfig.brand_name}
+                                </h2>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 1}px; opacity: 0.5; margin-bottom: 32px; font-weight: 400;">
+                                    تقبل الله منا ومنكم صالح الأعمال
+                                </p>
+                                
+                                <div class="flex flex-wrap justify-center gap-4">
+                                    <a href="https://wa.me/${(config.whatsapp_number || defaultConfig.whatsapp_number).replace(/\+/g, '')}" target="_blank" rel="noopener noreferrer"
+                                        class="card-hover flex items-center gap-3 px-6 py-3 rounded-md"
+                                       style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; text-decoration: none; font-size: ${baseSize * 0.95}px; font-weight: 500;">
+                                        <svg class="w-5 h-5" style="fill: currentColor;" viewBox="0 0 24 24">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                        </svg>
+                                        واتساب
+                                    </a>
+                                    <a href="tel:${config.phone_number || defaultConfig.phone_number}" target="_blank" rel="noopener noreferrer"
+                                        class="card-hover flex items-center gap-3 px-6 py-3 rounded-md"
+                                       style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; text-decoration: none; font-size: ${baseSize * 0.95}px; font-weight: 500;">
+                                        <svg class="w-5 h-5" style="fill: currentColor;" viewBox="0 0 24 24">
+                                            <path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/>
+                                        </svg>
+                                        اتصل بنا
+                                    </a>
+                                </div>
+                            </div>
+                        </section>
+
+                    </div>
+
+                    <!-- FOOTER -->
+                    <footer class="w-full py-12" style="background: ${colors.surface}; border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto px-6 text-center">
+                            <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.4; font-weight: 400;">
+                                © 2026 ${config.brand_name || defaultConfig.brand_name}
+                            </p>
+                        </div>
+                    </footer>
+                </div>
+            `;
+        }
+
+        function renderCalendarPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    تقويم رمضان المبارك
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    ٣٠ يوماً مباركة • اليوم ${currentRamadanDay} من رمضان
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-6xl mx-auto">
+                        <!-- Progress Bar -->
+                        <div class="mb-12 fade-in">
+                            <div class="flex items-center justify-between mb-4">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 1.1}px; font-weight: 500; opacity: 0.7;">
+                                    التقدم في الشهر الكريم
+                                </p>
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 1.3}px; font-weight: 600;">
+                                    ${Math.round((currentRamadanDay / 30) * 100)}%
+                                </p>
+                            </div>
+                            <div style="width: 100%; height: 12px; background: ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}; border-radius: 99px; overflow: hidden;">
+                                <div style="width: ${(currentRamadanDay / 30) * 100}%; height: 100%; background: linear-gradient(90deg, ${colors.primary}, ${colors.secondary}); border-radius: 99px; transition: width 0.5s ease;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div class="grid grid-cols-5 md:grid-cols-10 gap-5">
+                            ${Array.from({ length: 30 }, (_, i) => {
+                const day = i + 1;
+                const isToday = day === currentRamadanDay;
+                const isPast = day < currentRamadanDay;
+                return `
+                                    <div class="day-card aspect-square rounded-lg flex flex-col items-center justify-center relative overflow-hidden slide-in" 
+                                        style="background: ${isToday ? colors.primary : (isPast ? colors.surface + '80' : colors.surface)}; 
+                                                border: 2px solid ${isToday ? colors.primary : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}; 
+                                                animation-delay: ${i * 0.02}s;
+                                                ${isToday ? 'box-shadow: 0 0 30px ' + colors.primary + '40;' : ''}">
+                                        ${isToday ? `<div style="position: absolute; top: -2px; right: -2px; background: ${colors.primary}; color: ${isDark ? colors.background : '#fff'}; padding: 4px 10px; border-radius: 0 6px 0 12px; font-size: ${baseSize * 0.7}px; font-weight: 600;">اليوم</div>` : ''}
+                                        <span style="color: ${isToday ? (isDark ? colors.background : '#fff') : (isPast ? colors.text + '60' : colors.text)}; font-size: ${baseSize * 1.8}px; font-weight: ${isToday ? '700' : '500'};">
+                                            ${day}
+                                        </span>
+                                        ${isPast && !isToday ? `<svg style="width: 16px; height: 16px; fill: ${colors.primary}; opacity: 0.5; margin-top: 4px;" viewBox="0 0 24 24"><path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/></svg>` : ''}
+                                    </div>
+                                `;
+            }).join('')}
+                        </div>
+
+                        <!-- Stats Section -->
+                        <div class="grid md:grid-cols-3 gap-6 mt-16 fade-in" style="animation-delay: 0.3s;">
+                            <div class="rounded-lg p-8 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">
+                                    أيام مضت
+                                </p>
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 3.5}px; font-weight: 300; line-height: 1;">
+                                    ${currentRamadanDay - 1}
+                                </p>
+                            </div>
+                            <div class="rounded-lg p-8 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">
+                                    اليوم الحالي
+                                </p>
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 3.5}px; font-weight: 300; line-height: 1;">
+                                    ${currentRamadanDay}
+                                </p>
+                            </div>
+                            <div class="rounded-lg p-8 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.9}px; opacity: 0.5; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;">
+                                    أيام متبقية
+                                </p>
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 3.5}px; font-weight: 300; line-height: 1;">
+                                    ${30 - currentRamadanDay}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAzkarPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    ${config.azkar_title || defaultConfig.azkar_title}
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    الأذكار اليومية
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-4xl mx-auto">
+                        
+                        <div class="flex gap-3 mb-10 overflow-x-auto">
+                            <button onclick="switchAzkarTab('morning')" id="azkar-tab-morning" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer whitespace-nowrap" style="background: ${colors.primary}; color: ${isDark ? colors.background : '#fff'}; font-size: ${baseSize * 0.95}px;">
+                                أذكار الصباح
+                            </button>
+                            <button onclick="switchAzkarTab('evening')" id="azkar-tab-evening" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer whitespace-nowrap" style="background: ${colors.surface}; color: ${colors.text}; font-size: ${baseSize * 0.95}px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                أذكار المساء
+                            </button>
+                            <button onclick="switchAzkarTab('sleep')" id="azkar-tab-sleep" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer whitespace-nowrap" style="background: ${colors.surface}; color: ${colors.text}; font-size: ${baseSize * 0.95}px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                أذكار النوم
+                            </button>
+                            <button onclick="switchAzkarTab('general')" id="azkar-tab-general" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer whitespace-nowrap" style="background: ${colors.surface}; color: ${colors.text}; font-size: ${baseSize * 0.95}px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                أذكار عامة
+                            </button>
+                        </div>
+
+                        <div id="azkar-content">
+                            ${renderAzkarContent(currentAzkarTab, colors, baseSize, isDark)}
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAzkarContent(tab, colors, baseSize, isDark) {
+            if (azkarLoading) {
+                return `
+                    <div class="flex justify-center items-center py-20">
+                        <div class="spinner" style="width: 50px; height: 50px; border: 4px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                    </div>
+                `;
+            }
+
+            const azkar = azkarData[tab] || [];
+            return `
+                <div class="space-y-4">
+                    ${azkar.map((zikr, index) => `
+                        <div class="slide-in rounded-md p-6" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; border-right: 2px solid ${colors.primary}; animation-delay: ${index * 0.05}s;">
+                            <p style="color: ${colors.text}; font-size: ${baseSize * 1.25}px; line-height: 2; margin-bottom: 14px; font-weight: 400;">
+                                ${zikr.text}
+                            </p>
+                            ${zikr.count ? `
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 0.85}px; font-weight: 500; opacity: 0.8;">
+                                    ${zikr.count} ${zikr.count === 1 ? 'مرة' : 'مرات'}
+                                </p>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderQuranPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    ${config.quran_title || defaultConfig.quran_title}
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    قراءة واستماع القرآن الكريم
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-3xl mx-auto">
+                        
+                        <!-- Mode Toggle -->
+                        <div class="flex gap-3 mb-10">
+                            <button onclick="switchQuranMode('listen')" id="quran-mode-listen" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer" style="background: ${currentQuranMode === 'listen' ? colors.primary : colors.surface}; color: ${currentQuranMode === 'listen' ? (isDark ? colors.background : '#fff') : colors.text}; font-size: ${baseSize * 0.95}px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                🎧 الاستماع
+                            </button>
+                            <button onclick="switchQuranMode('read')" id="quran-mode-read" class="flex-1 px-6 py-3 rounded-md font-medium transition-all border-none cursor-pointer" style="background: ${currentQuranMode === 'read' ? colors.primary : colors.surface}; color: ${currentQuranMode === 'read' ? (isDark ? colors.background : '#fff') : colors.text}; font-size: ${baseSize * 0.95}px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                📖 القراءة
+                            </button>
+                        </div>
+
+                        <div id="quran-content">
+                            ${currentQuranMode === 'listen' ? renderQuranListen(colors, baseSize, isDark) : renderQuranRead(colors, baseSize, isDark)}
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuranListen(colors, baseSize, isDark) {
+            if (quranLoading) {
+                return `
+                    <div class="flex justify-center items-center py-20">
+                        <div class="spinner" style="width: 50px; height: 50px; border: 4px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                    </div>
+                `;
+            }
+
+            const reciters = [
+                { code: 'ar.alafasy', name: 'مشاري العفاسي', country: 'الكويت' },
+                { code: 'ar.abdulbasitmurattal', name: 'عبد الباسط عبد الصمد', country: 'مصر' },
+                { code: 'ar.abdullahbasfar', name: 'عبد الله بصفر', country: 'السعودية' },
+                { code: 'ar.abdurrahmaansudais', name: 'عبد الرحمن السديس', country: 'السعودية' },
+                { code: 'ar.hanirifai', name: 'هاني الرفاعي', country: 'السعودية' },
+                { code: 'ar.husary', name: 'محمود خليل الحصري', country: 'مصر' },
+                { code: 'ar.minshawi', name: 'محمد صديق المنشاوي', country: 'مصر' },
+                { code: 'ar.muhammadayyoub', name: 'محمد أيوب', country: 'السعودية' },
+                { code: 'ar.saoodshuraym', name: 'سعود الشريم', country: 'السعودية' }
+            ];
+
+            return `
+                <div class="rounded-md p-10" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                    <label for="reciter-search" style="display: block; margin-bottom: 16px; color: ${colors.text}; font-size: ${baseSize * 1.1}px; font-weight: 500;">
+                        ابحث عن القارئ
+                    </label>
+                    <input type="text" id="reciter-search" placeholder="اكتب اسم القارئ..." oninput="searchReciters(this.value)"
+                        style="width: 100%; padding: 14px 18px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 6px; font-size: ${baseSize * 1}px; color: ${colors.text}; background: ${colors.background}; margin-bottom: 16px; font-weight: 400;">
+                    
+                    <div id="reciters-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 24px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 6px; background: ${colors.background};">
+                        ${reciters.map(r => `
+                            <div class="reciter-item card-hover" data-reciter-code="${r.code}" data-reciter-name="${r.name}" onclick="selectReciter('${r.code}', '${r.name}')" 
+                                 style="padding: 16px 18px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}; cursor: pointer; transition: all 0.2s ease;">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 1.05}px; font-weight: 500; margin-bottom: 4px;">
+                                            ${r.name}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5;">
+                                            ${r.country}
+                                        </p>
+                                    </div>
+                                    <div class="reciter-check" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${colors.primary}; display: ${r.code === currentReciter ? 'flex' : 'none'}; align-items: center; justify-content: center;">
+                                        <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colors.primary};"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div id="selected-reciter" style="padding: 14px 18px; border: 1px solid ${colors.primary}40; border-radius: 6px; background: ${colors.primary}10; margin-bottom: 24px;">
+                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.6; margin-bottom: 6px; font-weight: 500;">
+                            القارئ المختار:
+                        </p>
+                        <p id="selected-reciter-name" style="color: ${colors.primary}; font-size: ${baseSize * 1.1}px; font-weight: 600;">
+                            ${reciters.find(r => r.code === currentReciter)?.name || 'مشاري العفاسي'}
+                        </p>
+                    </div>
+                    
+                    <label for="surah-select" style="display: block; margin-bottom: 16px; color: ${colors.text}; font-size: ${baseSize * 1.1}px; font-weight: 500;">
+                        اختر السورة للاستماع
+                    </label>
+                    <select id="surah-select" onchange="changeSurah(this.value)" style="width: 100%; padding: 14px 18px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 6px; font-size: ${baseSize * 1}px; color: ${colors.text}; background: ${colors.background}; margin-bottom: 24px; font-weight: 400; cursor: pointer;">
+                        ${quranSurahsData.map(s => `<option value="${s.num}">${String(s.num).padStart(3, '0')} - ${s.name} (${s.verses} آية)</option>`).join('')}
+                    </select>
+                    
+                    <audio id="quran-player" controls controlsList="nodownload" style="width: 100%; height: 54px; border-radius: 8px; outline: none;" onended="playNextSurah()">
+                        <source id="quran-source" src="https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3" type="audio/mpeg">
+                        متصفحك لا يدعم تشغيل الصوت
+                    </audio>
+                </div>
+            `;
+        }
+
+        function renderQuranRead(colors, baseSize, isDark) {
+            if (quranLoading) {
+                return `
+                    <div class="flex justify-center items-center py-20">
+                        <div class="spinner" style="width: 50px; height: 50px; border: 4px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="rounded-md p-10" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                    <h3 style="color: ${colors.primary}; font-size: ${baseSize * 1.5}px; font-weight: 600; margin-bottom: 24px; text-align: center;">
+                        السور المتاحة للقراءة
+                    </h3>
+                    <div class="grid gap-3">
+                        ${quranSurahsData.map((surah, index) => `
+                            <a href="https://quran.com/${surah.num}" target="_blank" rel="noopener noreferrer" 
+                               class="card-hover flex items-center justify-between p-5 rounded-md slide-in"
+                               style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; text-decoration: none; animation-delay: ${index * 0.05}s;">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center justify-center" style="width: 40px; height: 40px; background: ${colors.primary}15; border-radius: 8px; color: ${colors.primary}; font-size: ${baseSize * 1}px; font-weight: 600;">
+                                        ${surah.num}
+                                    </div>
+                                    <div>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 1.1}px; font-weight: 500; margin-bottom: 4px;">
+                                            ${surah.name}
+                                        </p>
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5;">
+                                            ${surah.verses} آية • ${surah.type}
+                                        </p>
+                                    </div>
+                                </div>
+                                <svg class="w-5 h-5" style="fill: ${colors.text}; opacity: 0.3;" viewBox="0 0 24 24">
+                                    <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+                                </svg>
+                            </a>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTasbihPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+            const progress = tasbihTarget > 0 ? (tasbihCount / tasbihTarget) * 100 : 0;
+
+            const zikrOptions = [
+                { text: 'عداد حر (بدون حد)', target: 0 },
+                { text: 'سبحان الله', target: 33 },
+                { text: 'الحمد لله', target: 33 },
+                { text: 'الله أكبر', target: 34 },
+                { text: 'لا إله إلا الله', target: 100 },
+                { text: 'استغفر الله', target: 100 },
+                { text: 'سبحان الله وبحمده', target: 100 },
+                { text: 'لا حول ولا قوة إلا بالله', target: 100 }
+            ];
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    المسبحة الإلكترونية
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    عداد الأذكار والتسبيح
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-2xl mx-auto">
+                        
+                        <!-- اختيار الذكر -->
+                        <div class="rounded-md p-8 mb-10 fade-in" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                            <label for="zikr-select" style="display: block; margin-bottom: 16px; color: ${colors.text}; font-size: ${baseSize * 1.1}px; font-weight: 500;">
+                                اختر الذكر
+                            </label>
+                            <select id="zikr-select" onchange="changeZikr(this.value)" style="width: 100%; padding: 14px 18px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 6px; font-size: ${baseSize * 1.1}px; color: ${colors.text}; background: ${colors.background}; font-weight: 500; cursor: pointer;">
+                                ${zikrOptions.map((z, i) => `<option value="${i}" ${z.text === selectedZikr || (tasbihTarget === 0 && z.target === 0) ? 'selected' : ''}>${z.text}${z.target > 0 ? ' (' + z.target + ')' : ''}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <!-- العداد الرئيسي -->
+                        <div class="rounded-lg p-12 text-center mb-10 fade-in" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; animation-delay: 0.1s;">
+                            
+                            <!-- الذكر الحالي -->
+                            <div class="mb-10">
+                                <p id="current-zikr" style="color: ${colors.primary}; font-size: ${baseSize * 2.5}px; font-weight: 600; line-height: 1.6; margin-bottom: 8px;">
+                                    ${selectedZikr}
+                                </p>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5; font-weight: 400;">
+                                    اضغط على الزر أو استخدم مسطرة المسافة
+                                </p>
+                            </div>
+
+                            <!-- العداد -->
+                            <div class="mb-10">
+                                <div id="count-display" style="color: ${colors.text}; font-size: ${baseSize * 8}px; font-weight: 300; line-height: 1; margin-bottom: 10px;">
+                                    ${tasbihCount}
+                                </div>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 1.2}px; opacity: 0.5; font-weight: 400;">
+                                    ${tasbihTarget > 0 ? 'من <span id="target-display">' + tasbihTarget + '</span>' : 'إجمالي العدد'}
+                                </p>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            ${tasbihTarget > 0 ? `
+                            <div class="mb-10">
+                                <div style="width: 100%; height: 8px; background: ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}; border-radius: 99px; overflow: hidden;">
+                                    <div id="progress-bar" style="width: ${progress}%; height: 100%; background: linear-gradient(90deg, ${colors.primary}, ${colors.secondary}); border-radius: 99px; transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- زر العد -->
+                            <button id="count-btn" onclick="incrementCount()" class="card-hover mb-6" style="width: 200px; height: 200px; border-radius: 50%; background: linear-gradient(145deg, ${colors.primary}, ${colors.secondary}); border: 8px solid ${colors.surface}; box-shadow: 0 20px 60px ${colors.primary}40, inset 0 0 30px rgba(255,255,255,0.1); cursor: pointer; font-size: ${baseSize * 2}px; color: ${isDark ? colors.background : '#fff'}; font-weight: 600; transition: all 0.2s ease; margin: 0 auto; display: block;">
+                                سَبِّح
+                            </button>
+
+                            <!-- أزرار التحكم -->
+                            <div class="flex justify-center gap-4">
+                                <button onclick="resetCount()" class="card-hover px-8 py-3 rounded-md border-none cursor-pointer" style="background: ${colors.background}; color: ${colors.text}; font-size: ${baseSize * 0.95}px; font-weight: 500; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};">
+                                    إعادة تعيين
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- إحصائيات -->
+                        <div class="grid grid-cols-3 gap-4 fade-in" style="animation-delay: 0.2s;">
+                            ${tasbihTarget > 0 ? `
+                            <div class="rounded-md p-6 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    المتبقي
+                                </p>
+                                <p id="remaining-display" style="color: ${colors.primary}; font-size: ${baseSize * 2}px; font-weight: 600; line-height: 1;">
+                                    ${Math.max(0, tasbihTarget - tasbihCount)}
+                                </p>
+                            </div>
+                            <div class="rounded-md p-6 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    النسبة
+                                </p>
+                                <p id="percentage-display" style="color: ${colors.primary}; font-size: ${baseSize * 2}px; font-weight: 600; line-height: 1;">
+                                    ${Math.round(progress)}%
+                                </p>
+                            </div>
+                            <div class="rounded-md p-6 text-center" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    الجولات
+                                </p>
+                                <p id="rounds-display" style="color: ${colors.primary}; font-size: ${baseSize * 2}px; font-weight: 600; line-height: 1;">
+                                    ${Math.floor(tasbihCount / tasbihTarget)}
+                                </p>
+                            </div>
+                            ` : `
+                            <div class="rounded-md p-6 text-center col-span-3" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.85}px; opacity: 0.5; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    بدون حدود
+                                </p>
+                                <p style="color: ${colors.primary}; font-size: ${baseSize * 3}px; font-weight: 200; line-height: 1;">
+                                    ∞
+                                </p>
+                            </div>
+                            `}
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTasksPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    ${config.tasks_title || defaultConfig.tasks_title}
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    خطة رمضان
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-3xl mx-auto">
+                        
+                        <div class="rounded-md p-8 mb-10" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                            <form id="todo-form" class="flex gap-4">
+                                <input type="text" id="todo-input" placeholder="إضافة مهمة جديدة..." required
+                                    style="flex: 1; padding: 14px 18px; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; border-radius: 6px; font-size: ${baseSize * 1}px; color: ${colors.text}; background: ${colors.background}; font-weight: 400;"
+                                    class="focus:outline-none">
+                                <button type="submit" id="todo-submit-btn" style="padding: 14px 28px; background: ${colors.primary}; color: ${isDark ? colors.background : '#fff'}; border: none; border-radius: 6px; font-size: ${baseSize * 0.95}px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+                                    إضافة
+                                </button>
+                            </form>
+                        </div>
+
+                        <div id="todo-list">
+                            ${tasks.length === 0 ? `
+                                <div class="text-center py-20">
+                                    <p style="text-align: center; color: ${colors.text}; opacity: 0.4; font-size: ${baseSize * 1.1}px; font-weight: 400;">
+                                        لا توجد مهام بعد
+                                    </p>
+                                </div>
+                            ` : tasks.map(task => renderTodoItem(task, colors, baseSize, isDark)).join('')}
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHadithPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    أحاديث رمضان
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    مجموعة من الأحاديث الشريفة
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-4xl mx-auto">
+                        ${hadithLoading ? `
+                            <div class="flex justify-center items-center py-20">
+                                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                            </div>
+                        ` : `
+                            <div class="space-y-6">
+                                ${hadithData.map((hadith, index) => `
+                                    <div class="slide-in rounded-lg p-10 hadith-card" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; border-right: 4px solid ${colors.primary}; animation-delay: ${index * 0.05}s;">
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 1.2}px; line-height: 2.2; margin-bottom: 20px; font-weight: 400;">
+                                            ${hadith.text}
+                                        </p>
+                                        <p style="color: ${colors.primary}; font-size: ${baseSize * 0.95}px; opacity: 0.7; font-weight: 500;">
+                                            ${hadith.source}
+                                        </p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDuaaPage(app, customFont, baseFontStack, baseSize, colors) {
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            app.innerHTML = `
+                <div class="w-full min-h-full" style="background: ${colors.background}; font-family: ${customFont}, ${baseFontStack};">
+                    
+                    <header class="w-full" style="background: ${colors.surface}; padding: 32px 24px; border-bottom: 1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'};">
+                        <div class="max-w-6xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 style="color: ${colors.text}; font-size: ${baseSize * 2}px; font-weight: 600; margin-bottom: 6px;">
+                                    ${config.duaa_title || defaultConfig.duaa_title}
+                                </h1>
+                                <p style="color: ${colors.text}; font-size: ${baseSize * 0.95}px; opacity: 0.5;">
+                                    أدعية مختارة
+                                </p>
+                            </div>
+                            <button onclick="navigateTo('home')" style="background: ${colors.background}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}; color: ${colors.text}; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 500;">
+                                رجوع
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="w-full px-6 py-12 max-w-4xl mx-auto">
+                        ${azkarLoading ? `
+                            <div class="flex justify-center items-center py-20">
+                                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid ${colors.primary}30; border-top-color: ${colors.primary}; border-radius: 50%;"></div>
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${azkarData.duaa.map((duaa, index) => `
+                                    <div class="slide-in rounded-md p-8" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}; border-right: 2px solid ${colors.primary}; animation-delay: ${index * 0.05}s;">
+                                        <p style="color: ${colors.text}; font-size: ${baseSize * 1.3}px; line-height: 2.2; margin-bottom: 12px; font-weight: 400;">
+                                            ${duaa.text}
+                                        </p>
+                                        <p style="color: ${colors.primary}; font-size: ${baseSize * 0.85}px; font-weight: 500; opacity: 0.7;">
+                                            ${duaa.category}
+                                        </p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTodoItem(task, colors, baseSize, isDark) {
+            return `
+                <div class="slide-in mb-4" data-task-id="${task.id}">
+                    <div class="flex items-center gap-4 p-5 rounded-md" style="background: ${colors.surface}; border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'};">
+                        <button onclick="toggleTodo('${task.id}')" 
+                                class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
+                                style="border-color: ${task.completed ? colors.primary : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')}; background-color: ${task.completed ? colors.primary : 'transparent'}; cursor: pointer;">
+                            ${task.completed ? `<svg class="w-3 h-3" style="fill: ${isDark ? colors.background : '#fff'};" viewBox="0 0 24 24"><path d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/></svg>` : ''}
+                        </button>
+                        <p class="${task.completed ? 'line-through opacity-40' : ''}" style="flex: 1; color: ${colors.text}; font-size: ${baseSize * 1.05}px; font-weight: 400;">
+                            ${task.text}
+                        </p>
+                        <button onclick="deleteTodo('${task.id}')" style="color: #ef4444; background: transparent; border: none; cursor: pointer; padding: 6px; opacity: 0.6; transition: opacity 0.2s;">
+                            <svg class="w-5 h-5" style="fill: currentColor;" viewBox="0 0 24 24">
+                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function attachEventListeners() {
+            const todoForm = document.getElementById('todo-form');
+            if (todoForm) {
+                todoForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    if (tasks.length >= 999) {
+                        showToast('تم الوصول للحد الأقصى', '#f59e0b');
+                        return;
+                    }
+
+                    const input = document.getElementById('todo-input');
+                    const submitBtn = document.getElementById('todo-submit-btn');
+                    const text = input.value.trim();
+                    if (!text) return;
+
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'جاري الإضافة...';
+
+                    const newTask = {
+                        id: generateId(),
+                        text: text,
+                        completed: false,
+                        createdAt: new Date().toISOString(),
+                        day: currentRamadanDay
+                    };
+
+                    const result = await window.dataSdk.create(newTask);
+
+                    if (result.isOk) {
+                        input.value = '';
+                        showToast('تمت الإضافة بنجاح', '#10b981');
+                    } else {
+                        showToast('حدث خطأ', '#ef4444');
+                    }
+
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'إضافة';
+                });
+            }
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function startCountdownUpdate() {
+            setInterval(() => {
+                updateCountdown();
+                calculateNextPrayer();
+                updateNextPrayerDisplay();
+                updatePrayerTimesDisplay();
+            }, 1000);
+        }
+
+        function startTimeUpdate() {
+            setInterval(() => {
+                updateCurrentTime();
+            }, 1000);
+        }
+
+        function updateCountdown() {
+            const countdown = calculateRamadanCountdown();
+            const daysEl = document.getElementById('countdown-days');
+            const hoursEl = document.getElementById('countdown-hours');
+            const minutesEl = document.getElementById('countdown-minutes');
+            const secondsEl = document.getElementById('countdown-seconds');
+
+            if (daysEl) daysEl.textContent = String(countdown.days).padStart(2, '0');
+            if (hoursEl) hoursEl.textContent = String(countdown.hours).padStart(2, '0');
+            if (minutesEl) minutesEl.textContent = String(countdown.minutes).padStart(2, '0');
+            if (secondsEl) secondsEl.textContent = String(countdown.seconds).padStart(2, '0');
+        }
+
+        function updateNextPrayerDisplay() {
+            const nextPrayerTimeEl = document.getElementById('next-prayer-time');
+            if (nextPrayerTimeEl && nextPrayer.timeLeft) {
+                nextPrayerTimeEl.textContent = `بعد ${nextPrayer.timeLeft}`;
+            }
+        }
+
+        window.navigateTo = function (page) {
+            currentPage = page;
+            render();
+            window.scrollTo(0, 0);
+        };
+
+        window.switchAzkarTab = function (tab) {
+            currentAzkarTab = tab;
+            const tabs = ['morning', 'evening', 'sleep', 'general'];
+            const colors = getThemeColors();
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            tabs.forEach(t => {
+                const btn = document.getElementById(`azkar-tab-${t}`);
+                if (btn) {
+                    if (t === tab) {
+                        btn.style.background = colors.primary;
+                        btn.style.color = isDark ? colors.background : '#fff';
+                        btn.style.border = 'none';
+                    } else {
+                        btn.style.background = colors.surface;
+                        btn.style.color = colors.text;
+                        btn.style.border = `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`;
+                    }
+                }
+            });
+
+            const content = document.getElementById('azkar-content');
+            if (content) {
+                content.innerHTML = renderAzkarContent(tab, colors, baseSize, isDark);
+            }
+        };
+
+        window.switchQuranMode = function (mode) {
+            currentQuranMode = mode;
+            const colors = getThemeColors();
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            const listenBtn = document.getElementById('quran-mode-listen');
+            const readBtn = document.getElementById('quran-mode-read');
+
+            if (listenBtn) {
+                listenBtn.style.background = mode === 'listen' ? colors.primary : colors.surface;
+                listenBtn.style.color = mode === 'listen' ? (isDark ? colors.background : '#fff') : colors.text;
+            }
+
+            if (readBtn) {
+                readBtn.style.background = mode === 'read' ? colors.primary : colors.surface;
+                readBtn.style.color = mode === 'read' ? (isDark ? colors.background : '#fff') : colors.text;
+            }
+
+            const content = document.getElementById('quran-content');
+            if (content) {
+                content.innerHTML = mode === 'listen' ? renderQuranListen(colors, baseSize, isDark) : renderQuranRead(colors, baseSize, isDark);
+                attachEventListeners();
+            }
+        };
+
+        window.nextHadith = function () {
+            currentHadithIndex = (currentHadithIndex + 1) % hadithData.length;
+            updateHadithDisplay();
+        };
+
+        window.previousHadith = function () {
+            currentHadithIndex = (currentHadithIndex - 1 + hadithData.length) % hadithData.length;
+            updateHadithDisplay();
+        };
+
+        window.incrementCount = function () {
+            tasbihCount++;
+            updateTasbihDisplay();
+            animateCountButton();
+
+            if (tasbihTarget > 0 && tasbihCount === tasbihTarget) {
+                showToast('مبروك! أتممت العدد المطلوب 🎉', '#10b981');
+            }
+        };
+
+        window.resetCount = function () {
+            tasbihCount = 0;
+            updateTasbihDisplay();
+        };
+
+        window.changeZikr = function (index) {
+            const zikrOptions = [
+                { text: 'عداد حر (بدون حد)', target: 0 },
+                { text: 'سبحان الله', target: 33 },
+                { text: 'الحمد لله', target: 33 },
+                { text: 'الله أكبر', target: 34 },
+                { text: 'لا إله إلا الله', target: 100 },
+                { text: 'استغفر الله', target: 100 },
+                { text: 'سبحان الله وبحمده', target: 100 },
+                { text: 'لا حول ولا قوة إلا بالله', target: 100 }
+            ];
+
+            selectedZikr = zikrOptions[index].text;
+            tasbihTarget = zikrOptions[index].target;
+            tasbihCount = 0;
+
+            render();
+        };
+
+        window.changeSurah = function (surahNumber) {
+            const player = document.getElementById('quran-player');
+            const source = document.getElementById('quran-source');
+            const surahSelect = document.getElementById('surah-select');
+
+            if (player && source) {
+                const paddedNumber = String(surahNumber).padStart(3, '0');
+                source.src = `https://cdn.islamic.network/quran/audio/128/${currentReciter}/${surahNumber}.mp3`;
+
+                if (surahSelect) {
+                    surahSelect.value = surahNumber;
+                }
+
+                player.load();
+                player.play().catch(e => {
+                    showToast('جاري تحميل السورة...', '#f59e0b');
+                });
+            }
+        };
+
+        window.playNextSurah = function () {
+            const surahSelect = document.getElementById('surah-select');
+            if (surahSelect) {
+                const currentSurah = parseInt(surahSelect.value);
+                const nextSurah = currentSurah < 114 ? currentSurah + 1 : 1;
+                changeSurah(nextSurah);
+            }
+        };
+
+        window.searchReciters = function (searchTerm) {
+            const reciterItems = document.querySelectorAll('.reciter-item');
+            const normalizedSearch = searchTerm.trim().toLowerCase();
+
+            reciterItems.forEach(item => {
+                const name = item.getAttribute('data-reciter-name').toLowerCase();
+                if (name.includes(normalizedSearch)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        };
+
+        window.selectReciter = function (code, name) {
+            currentReciter = code;
+
+            const selectedNameEl = document.getElementById('selected-reciter-name');
+            if (selectedNameEl) {
+                selectedNameEl.textContent = name;
+            }
+
+            const allChecks = document.querySelectorAll('.reciter-check');
+            allChecks.forEach(check => check.style.display = 'none');
+
+            const selectedItem = document.querySelector(`[data-reciter-code="${code}"]`);
+            if (selectedItem) {
+                const check = selectedItem.querySelector('.reciter-check');
+                if (check) check.style.display = 'flex';
+            }
+
+            const surahSelect = document.getElementById('surah-select');
+            if (surahSelect) {
+                changeSurah(surahSelect.value);
+            }
+        };
+
+        function updateTasbihDisplay() {
+            const countEl = document.getElementById('count-display');
+            const targetEl = document.getElementById('target-display');
+            const progressBar = document.getElementById('progress-bar');
+            const remainingEl = document.getElementById('remaining-display');
+            const percentageEl = document.getElementById('percentage-display');
+            const roundsEl = document.getElementById('rounds-display');
+            const zikrEl = document.getElementById('current-zikr');
+
+            if (countEl) countEl.textContent = tasbihCount;
+
+            if (tasbihTarget > 0) {
+                const progress = (tasbihCount / tasbihTarget) * 100;
+
+                if (targetEl) targetEl.textContent = tasbihTarget;
+                if (progressBar) progressBar.style.width = `${progress}%`;
+                if (remainingEl) remainingEl.textContent = Math.max(0, tasbihTarget - tasbihCount);
+                if (percentageEl) percentageEl.textContent = `${Math.round(progress)}%`;
+                if (roundsEl) roundsEl.textContent = Math.floor(tasbihCount / tasbihTarget);
+            }
+
+            if (zikrEl) zikrEl.textContent = selectedZikr;
+        }
+
+        function animateCountButton() {
+            const btn = document.getElementById('count-btn');
+            if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'scale(1)';
+                }, 100);
+            }
+        }
+
+        function updateHadithDisplay() {
+            const textEl = document.getElementById('hadith-text');
+            const sourceEl = document.getElementById('hadith-source');
+
+            if (textEl) textEl.textContent = hadithData[currentHadithIndex].text;
+            if (sourceEl) sourceEl.textContent = hadithData[currentHadithIndex].source;
+        }
+
+        window.toggleTodo = async function (taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const updatedTask = { ...task, completed: !task.completed };
+            const result = await window.dataSdk.update(updatedTask);
+
+            if (!result.isOk) {
+                showToast('حدث خطأ', '#ef4444');
+            }
+        };
+
+        window.deleteTodo = async function (taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const result = await window.dataSdk.delete(task);
+
+            if (result.isOk) {
+                showToast('تم الحذف', '#ef4444');
+            } else {
+                showToast('حدث خطأ', '#ef4444');
+            }
+        };
+
+        function showToast(message, bgColor) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: ${bgColor};
+                color: white;
+                padding: 14px 24px;
+                border-radius: 8px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+                z-index: 1000;
+                font-size: ${(config.font_size || defaultConfig.font_size) * 0.95}px;
+                font-weight: 500;
+                animation: fadeIn 0.3s ease;
+            `;
+            toast.textContent = message;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        const dataHandler = {
+            onDataChanged(data) {
+                tasks = data.sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                });
+
+                if (currentPage === 'tasks') {
+                    updateTodoList();
+                }
+            }
+        };
+
+        function updateTodoList() {
+            const todoList = document.getElementById('todo-list');
+            if (!todoList) return;
+
+            const colors = getThemeColors();
+            const baseSize = config.font_size || defaultConfig.font_size;
+            const isDark = config.dark_mode !== undefined ? config.dark_mode : defaultConfig.dark_mode;
+
+            if (tasks.length === 0) {
+                todoList.innerHTML = `
+                    <div class="text-center py-20">
+                        <p style="text-align: center; color: ${colors.text}; opacity: 0.4; font-size: ${baseSize * 1.1}px; font-weight: 400;">
+                            لا توجد مهام بعد
+                        </p>
+                    </div>
+                `;
+            } else {
+                todoList.innerHTML = tasks.map(task => renderTodoItem(task, colors, baseSize, isDark)).join('');
+            }
+        }
+
+        async function onConfigChange(newConfig) {
+            config = newConfig;
+            render();
+        }
+
+        function mapToCapabilities(config) {
+            return {
+                recolorables: [
+                    {
+                        get: () => config.background_color || defaultConfig.background_color,
+                        set: (value) => {
+                            config.background_color = value;
+                            window.elementSdk.setConfig({ background_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.surface_color || defaultConfig.surface_color,
+                        set: (value) => {
+                            config.surface_color = value;
+                            window.elementSdk.setConfig({ surface_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.text_color || defaultConfig.text_color,
+                        set: (value) => {
+                            config.text_color = value;
+                            window.elementSdk.setConfig({ text_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.primary_action_color || defaultConfig.primary_action_color,
+                        set: (value) => {
+                            config.primary_action_color = value;
+                            window.elementSdk.setConfig({ primary_action_color: value });
+                        }
+                    },
+                    {
+                        get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+                        set: (value) => {
+                            config.secondary_action_color = value;
+                            window.elementSdk.setConfig({ secondary_action_color: value });
+                        }
+                    }
+                ],
+                borderables: [],
+                fontEditable: {
+                    get: () => config.font_family || defaultConfig.font_family,
+                    set: (value) => {
+                        config.font_family = value;
+                        window.elementSdk.setConfig({ font_family: value });
+                    }
+                },
+                fontSizeable: {
+                    get: () => config.font_size || defaultConfig.font_size,
+                    set: (value) => {
+                        config.font_size = value;
+                        window.elementSdk.setConfig({ font_size: value });
+                    }
+                }
+            };
+        }
+
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ["main_title", config.main_title || defaultConfig.main_title],
+                ["subtitle", config.subtitle || defaultConfig.subtitle],
+                ["countdown_title", config.countdown_title || defaultConfig.countdown_title],
+                ["prayer_times_title", config.prayer_times_title || defaultConfig.prayer_times_title],
+                ["azkar_title", config.azkar_title || defaultConfig.azkar_title],
+                ["quran_title", config.quran_title || defaultConfig.quran_title],
+                ["tasks_title", config.tasks_title || defaultConfig.tasks_title],
+                ["duaa_title", config.duaa_title || defaultConfig.duaa_title],
+                ["brand_name", config.brand_name || defaultConfig.brand_name],
+                ["whatsapp_number", config.whatsapp_number || defaultConfig.whatsapp_number],
+                ["phone_number", config.phone_number || defaultConfig.phone_number]
+            ]);
+        }
+
+        async function init() {
+            updateCurrentTime();
+
+            await Promise.all([
+                fetchPrayerTimes(),
+                fetchAzkar(),
+                fetchHadith(),
+                fetchQuranSurahs()
+            ]);
+
+            if (window.dataSdk) {
+                const initResult = await window.dataSdk.init(dataHandler);
+                if (!initResult.isOk) {
+                    console.error("فشل تهيئة Data SDK");
+                }
+            }
+
+            if (window.elementSdk) {
+                window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange,
+                    mapToCapabilities,
+                    mapToEditPanelValues
+                });
+
+                config = window.elementSdk.config;
+            }
+            render();
+
+            setInterval(() => {
+                fetchPrayerTimes();
+            }, 3600000);
+
+            document.addEventListener('keydown', (e) => {
+                if (currentPage === 'tasbih' && e.code === 'Space') {
+                    e.preventDefault();
+                    window.incrementCount();
+                }
+            });
+        }
+
+        init();
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9b2a52c760169d86',t:'MTc2NjUxODc0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
